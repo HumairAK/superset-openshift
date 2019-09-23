@@ -1,0 +1,61 @@
+FROM registry.access.redhat.com/ubi8/python-36
+
+# Superset version
+ARG SUPERSET_VERSION=0.30
+
+# Configure environment
+ENV GUNICORN_BIND=0.0.0.0:8088 \
+    GUNICORN_LIMIT_REQUEST_FIELD_SIZE=0 \
+    GUNICORN_LIMIT_REQUEST_LINE=0 \
+    GUNICORN_TIMEOUT=60 \
+    GUNICORN_WORKERS=2 \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PYTHONPATH=/etc/superset:/opt/superset/work-dir:$PYTHONPATH \
+    SUPERSET_REPO=apache/incubator-superset \
+    SUPERSET_VERSION=${SUPERSET_VERSION} \
+    SUPERSET_HOME=/var/lib/superset
+ENV GUNICORN_CMD_ARGS="--workers ${GUNICORN_WORKERS} --timeout ${GUNICORN_TIMEOUT} --bind ${GUNICORN_BIND} --limit-request-line ${GUNICORN_LIMIT_REQUEST_LINE} --limit-request-field_size ${GUNICORN_LIMIT_REQUEST_FIELD_SIZE}"
+
+USER 0
+
+# Create superset user & install dependencies
+RUN mkdir /etc/superset  && \
+    mkdir ${SUPERSET_HOME} && \
+    chgrp -R 0 /etc/superset && chmod -R g=u /etc/superset && \
+    chgrp -R 0 ${SUPERSET_HOME} && chmod -R g=u ${SUPERSET_HOME} && \
+    dnf update -y
+RUN dnf install -y platform-python-devel && \
+    curl https://raw.githubusercontent.com/${SUPERSET_REPO}/${SUPERSET_VERSION}/requirements.txt -o requirements.txt && \
+    pip install --no-cache-dir -r requirements.txt && \
+        pip install --no-cache-dir \
+        Werkzeug==0.14.1 \
+        flask-cors==3.0.3 \
+        flask-mail==0.9.1 \
+        flask-oauth==0.12 \
+        flask_oauthlib==0.9.3 \
+        gevent==1.2.2 \
+        impyla==0.14.0 \
+        infi.clickhouse-orm==1.0.2 \
+        mysqlclient==1.4.4 \
+        psycopg2==2.8.3 \
+        pyathena==1.2.5 \
+        pyhive==0.5.1 \
+        pyldap==2.4.28 \
+        pymssql==2.1.4 \
+        redis==2.10.5 \
+        sqlalchemy-clickhouse==0.1.5.post0 \
+        sqlalchemy-redshift==0.7.1 \
+        superset==${SUPERSET_VERSION} && \
+    rm requirements.txt
+
+COPY bin/superset_init.sh /usr/local/bin
+VOLUME /etc/superset \
+       /var/lib/superset
+
+# Deploy application
+EXPOSE 8088
+HEALTHCHECK CMD ["curl", "-f", "http://localhost:8088/health"]
+CMD ["gunicorn", "superset:app"]
+
+USER 1001

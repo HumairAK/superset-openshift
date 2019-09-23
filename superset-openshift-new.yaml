@@ -75,48 +75,21 @@ objects:
       creationTimestamp: null
       name: "${SUPERSET_SERVICE_NAME}"
   - apiVersion: v1
-    kind: BuildConfig
+    kind: ImageStream
     metadata:
-      annotations:
-        openshift.io/generated-by: OpenShiftWebConsole
-      creationTimestamp: null
       labels:
         app: superset
-      name: ${SUPERSET_SERVICE_NAME}
+      name: superset
     spec:
-      nodeSelector: null
-      output:
-        to:
-          kind: ImageStreamTag
-          name: superset:latest
-          namespace: "${NAMESPACE}"
-      postCommit: {}
-      resources: {}
-      runPolicy: Serial
-      source:
-        git:
-          ref: "${GIT_REF}"
-          uri: "${GIT_URI}"
-        type: Git
-      strategy:
-        sourceStrategy:
-          from:
-            kind: ImageStreamTag
-            name: python:3.6
-            namespace: openshift
-        type: Source
-      triggers:
-        - imageChange: {}
-          type: ImageChange
-        - type: ConfigChange
-        - generic:
-            secret: "${GENERIC_TRIGGER_SECRET}"
-          type: Generic
-        - github:
-            secret: "${GITHUB_TRIGGER_SECRET}"
-          type: GitHub
-    status:
-      lastVersion: 0
+      lookupPolicy:
+        local: true
+      tags:
+      - name: "1.0"
+        from:
+          kind: "DockerImage"
+          name: "quay.io/hukhan/superset:1.0"
+        referencePolicy:
+          type: "Local"
   - apiVersion: v1
     kind: DeploymentConfig
     metadata:
@@ -180,8 +153,7 @@ objects:
                     name: superset
                 - secretRef:
                     name: superset-postgresql
-              image: >-
-                docker-registry.default.svc:5000/${NAMESPACE}/superset:latest
+              image: quay.io/hukhan/superset:1.0
               imagePullPolicy: Always
               resources: {}
               terminationMessagePath: /dev/termination-log
@@ -191,7 +163,6 @@ objects:
                   name: superset-data
                 - mountPath: /etc/superset
                   name: superset-config
-
           restartPolicy: Always
           schedulerName: default-scheduler
           securityContext: {}
@@ -328,14 +299,6 @@ objects:
           type: ImageChange
         - type: ConfigChange
     status: {}
-  - apiVersion: v1
-    kind: ImageStream
-    metadata:
-      labels:
-        app: superset
-        build: ${SUPERSET_SERVICE_NAME}
-      name: superset
-    spec: {}
   - apiVersion: v1
     kind: Service
     metadata:
@@ -477,7 +440,7 @@ parameters:
   - name: GIT_URI
     displayName: Git URI
     description: Git source URI for superset
-    value: https://github.com/riekrh/superset-openshift
+    value: https://github.com/HumairAK/superset-openshift
     required: true
   - name: GIT_REF
     displayName: Git Ref
