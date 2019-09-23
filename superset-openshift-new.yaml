@@ -27,6 +27,7 @@ objects:
       labels:
         app: superset
         service: ${SUPERSET_SERVICE_NAME}
+
   - apiVersion: v1
     kind: Secret
     metadata:
@@ -47,6 +48,7 @@ objects:
       database-user: "${DATABASE_USER}"
       superset-secret-key: "${SUPERSET_SECRET_KEY}"
     type: Opaque
+
   - apiVersion: v1
     data:
       FLASK_APP: ${SUPERSET_SERVICE_NAME}
@@ -74,6 +76,7 @@ objects:
     metadata:
       creationTimestamp: null
       name: "${SUPERSET_SERVICE_NAME}"
+
   - apiVersion: v1
     kind: ImageStream
     metadata:
@@ -84,12 +87,13 @@ objects:
       lookupPolicy:
         local: true
       tags:
-      - name: "1.0"
-        from:
-          kind: "DockerImage"
-          name: "quay.io/hukhan/superset:1.0"
-        referencePolicy:
-          type: "Local"
+        - name: latest
+          from:
+            kind: DockerImage
+            name: docker.io/amancevice/superset:${SUPERSET_VERSION}
+          referencePolicy:
+            type: Local
+
   - apiVersion: v1
     kind: DeploymentConfig
     metadata:
@@ -122,16 +126,16 @@ objects:
             deploymentconfig: superset
         spec:
           containers:
-            - envFrom:
+            - name: superset
+              envFrom:
                 - configMapRef:
                     name: superset
                 - secretRef:
                     name: superset-postgresql
-              image: superset
+              image: docker.io/amancevice/superset:${SUPERSET_VERSION}
               imagePullPolicy: Always
-              name: superset
               ports:
-                - containerPort: 8080
+                - containerPort: 8088
                   protocol: TCP
               resources: {}
               terminationMessagePath: /dev/termination-log
@@ -147,13 +151,13 @@ objects:
               command:
                 - /bin/sh
                 - -c
-                - ./superset_init.sh && sleep 30
+                - superset-init --username admin --firstname admin --lastname admin --email admin --password admin && sleep 30
               envFrom:
                 - configMapRef:
                     name: superset
                 - secretRef:
                     name: superset-postgresql
-              image: quay.io/hukhan/superset:1.0
+              image: docker.io/amancevice/superset:${SUPERSET_VERSION}
               imagePullPolicy: Always
               resources: {}
               terminationMessagePath: /dev/termination-log
@@ -191,6 +195,7 @@ objects:
           type: ImageChange
         - type: ConfigChange
     status: {}
+
   - apiVersion: v1
     kind: DeploymentConfig
     metadata:
@@ -299,6 +304,7 @@ objects:
           type: ImageChange
         - type: ConfigChange
     status: {}
+
   - apiVersion: v1
     kind: Service
     metadata:
@@ -311,16 +317,17 @@ objects:
       name: "${SUPERSET_SERVICE_NAME}"
     spec:
       ports:
-        - name: 8080-tcp
-          port: 8080
+        - name: 8088-tcp
+          port: 8088
           protocol: TCP
-          targetPort: 8080
+          targetPort: 8088
       selector:
         deploymentconfig: "${SUPERSET_SERVICE_NAME}"
       sessionAffinity: None
       type: ClusterIP
     status:
       loadBalancer: {}
+
   - apiVersion: v1
     kind: Service
     metadata:
@@ -343,33 +350,20 @@ objects:
       type: ClusterIP
     status:
       loadBalancer: {}
+
   - apiVersion: v1
     kind: Route
     metadata:
-      annotations:
-        openshift.io/host.generated: "true"
-      creationTimestamp: null
       labels:
         app: superset
       name: superset
     spec:
-      host: ${FQDN}
       port:
-        targetPort: 8080-tcp
+        targetPort: 8088-tcp
       to:
         kind: Service
         name: superset
-        weight: 100
-      wildcardPolicy: None
-    status:
-      ingress:
-        - conditions:
-            - lastTransitionTime: 2018-07-10T19:03:51Z
-              status: "True"
-              type: Admitted
-          host: ${FQDN}
-          routerName: router
-          wildcardPolicy: None
+
 parameters:
   - description: The Fully Qualified Hostname (FQDN) of the application
     displayName: FQDN
@@ -433,6 +427,10 @@ parameters:
     name: VOLUME_CAPACITY_SUPERSET
     required: true
     value: 512Mi
+  - name: SUPERSET_VERSION
+    displayName: Superset version
+    value: 0.34.0
+    required: true
   - name: SUPERSET_SERVICE_NAME
     displayName: Superset Service Name
     value: superset
