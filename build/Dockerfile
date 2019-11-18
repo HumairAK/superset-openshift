@@ -26,7 +26,7 @@ RUN mkdir /etc/superset  && \
     mkdir ${SUPERSET_HOME} && \
     chgrp -R 0 /etc/superset && chmod -R g=u /etc/superset && \
     chgrp -R 0 ${SUPERSET_HOME} && chmod -R g=u ${SUPERSET_HOME} && \
-    chmod +x /usr/local/bin/superset_init
+    chmod +x /usr/local/bin/superset_init && \
     dnf update -y
 RUN dnf install -y platform-python-devel && \
     curl https://raw.githubusercontent.com/${SUPERSET_REPO}/${SUPERSET_VERSION}/requirements.txt -o requirements.txt && \
