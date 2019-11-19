@@ -19,19 +19,20 @@ ENV GUNICORN_CMD_ARGS="--workers ${GUNICORN_WORKERS} --timeout ${GUNICORN_TIMEOU
 
 USER 0
 
-COPY bin/superset_init /usr/local/bin
+COPY bin/superset-init /usr/local/bin
 
 # Create superset user & install dependencies
 RUN mkdir /etc/superset  && \
     mkdir ${SUPERSET_HOME} && \
     chgrp -R 0 /etc/superset && chmod -R g=u /etc/superset && \
     chgrp -R 0 ${SUPERSET_HOME} && chmod -R g=u ${SUPERSET_HOME} && \
-    chmod +x /usr/local/bin/superset_init && \
+    chmod +x /usr/local/bin/superset-init && \
     dnf update -y
 RUN dnf install -y platform-python-devel && \
     curl https://raw.githubusercontent.com/${SUPERSET_REPO}/${SUPERSET_VERSION}/requirements.txt -o requirements.txt && \
     pip install --no-cache-dir -r requirements.txt && \
         pip install --no-cache-dir \
+        thrift==0.13.0 \
         Werkzeug==0.14.1 \
         flask-cors==3.0.3 \
         flask-mail==0.9.1 \
