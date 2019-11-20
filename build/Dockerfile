@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/python-36
+FROM docker.io/centos/python-36-centos7
 
 # Superset version
 ARG SUPERSET_VERSION=0.30
@@ -9,8 +9,6 @@ ENV GUNICORN_BIND=0.0.0.0:8088 \
     GUNICORN_LIMIT_REQUEST_LINE=0 \
     GUNICORN_TIMEOUT=60 \
     GUNICORN_WORKERS=2 \
-    LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8 \
     PYTHONPATH=/etc/superset:/opt/superset/work-dir:$PYTHONPATH \
     SUPERSET_REPO=apache/incubator-superset \
     SUPERSET_VERSION=${SUPERSET_VERSION} \
@@ -20,6 +18,7 @@ ENV GUNICORN_CMD_ARGS="--workers ${GUNICORN_WORKERS} --timeout ${GUNICORN_TIMEOU
 USER 0
 
 COPY bin/superset-init /usr/local/bin
+COPY bin/entrypoint.sh /usr/local/bin
 
 # Create superset user & install dependencies
 RUN mkdir /etc/superset  && \
@@ -27,9 +26,9 @@ RUN mkdir /etc/superset  && \
     chgrp -R 0 /etc/superset && chmod -R g=u /etc/superset && \
     chgrp -R 0 ${SUPERSET_HOME} && chmod -R g=u ${SUPERSET_HOME} && \
     chmod +x /usr/local/bin/superset-init && \
-    dnf update -y
-RUN dnf install -y platform-python-devel && \
-    curl https://raw.githubusercontent.com/${SUPERSET_REPO}/${SUPERSET_VERSION}/requirements.txt -o requirements.txt && \
+    chmod g=u /etc/passwd /etc/group && \
+    yum update -y
+RUN curl https://raw.githubusercontent.com/${SUPERSET_REPO}/${SUPERSET_VERSION}/requirements.txt -o requirements.txt && \
     pip install --no-cache-dir -r requirements.txt && \
         pip install --no-cache-dir \
         thrift==0.13.0 \
@@ -61,4 +60,4 @@ EXPOSE 8088
 HEALTHCHECK CMD ["curl", "-f", "http://localhost:8088/health"]
 CMD ["gunicorn", "superset:app"]
 
-USER 1001
+USER 185
